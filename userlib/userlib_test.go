@@ -1,10 +1,7 @@
 package userlib
 import "testing"
-
-// You can import other stuff in here if you want.
-
-//import "encoding/hex"
-//import "io"
+import "encoding/hex"
+import "io"
 
 // Golang has a very powerful routine for building tests.
 
@@ -30,6 +27,7 @@ func TestDatastore(t *testing.T){
 	t.Log("Datastore map", DatastoreGetMap())
 	DatastoreClear()
 	t.Log("Datastore map", DatastoreGetMap())
+	
 }
 
 func TestRSA(t *testing.T){
@@ -80,7 +78,83 @@ func TestRSA(t *testing.T){
 	
 }
 
-// An example of deliberately failing test
+
+func TestHMAC(t *testing.T){
+	msga := [] byte ("foo")
+	msgb := [] byte ("bar")
+	keya := [] byte ("baz")
+	keyb := [] byte ("boop")
+	
+	mac := NewHMAC(keya)
+	mac.Write(msga)
+	maca := mac.Sum(nil)
+	mac = NewHMAC(keya)
+	mac.Write(msgb)
+	macb := mac.Sum(nil)
+	if Equal(maca, macb) {
+		t.Error("MACs are equal for different data")
+	}
+	mac = NewHMAC(keyb)
+	mac.Write(msga)
+	macc := mac.Sum(nil)
+	if Equal(maca, macc) {
+		t.Error("MACs are equal for different key")
+	}
+	mac = NewHMAC(keya)
+	mac.Write(msga)
+	macd := mac.Sum(nil)
+	if !Equal(maca, macd) {
+		t.Error("Macs are not equal when they should be")
+	}	
+}
+
+func TestPBKDF(t *testing.T){
+	val1 := PBKDF2Key([]byte("Password"),
+		[]byte("nosalt"),
+		32);
+
+	val2 := PBKDF2Key([]byte("Password"),
+		[]byte("nosalt"),
+		64);
+
+	val3 := PBKDF2Key([]byte("password"),
+		[]byte("nosalt"),
+		32);
+
+	if Equal(val1, val2) || Equal(val1, val3) || Equal(val2, val3) {
+		t.Error("PBKDF2 problem")
+	}
+	t.Log(hex.EncodeToString(val1))
+	t.Log(hex.EncodeToString(val2))
+	t.Log(hex.EncodeToString(val3))
+
+}
+
+func TestStreamCipher(t *testing.T){
+	key := []byte("example key 1234")
+	msg := "This is a Test"
+	ciphertext := make([] byte, BlockSize + len(msg))
+	iv := ciphertext[:BlockSize]
+	// Load random data
+	if _, err := io.ReadFull(Reader, iv); err != nil {
+		panic(err)
+	}
+	t.Log("Random IV", hex.EncodeToString(iv))
+	cipher := CFBEncrypter(key, iv)
+	cipher.XORKeyStream(ciphertext[BlockSize:], []byte(msg))
+	t.Log("Message  ", hex.EncodeToString(ciphertext))
+
+	cipher = CFBDecrypter(key, iv)
+	// Yes you can do this in-place
+	cipher.XORKeyStream(ciphertext[BlockSize:], ciphertext[BlockSize:])
+	t.Log("Decrypted messagege", string(ciphertext[BlockSize:]))
+	if string(ciphertext[BlockSize:]) != msg {
+		t.Error("Decryption failure")
+	}
+}
+
+
+// Deliberate fail example
 // func TestFailure(t *testing.T){
 //	t.Log("This test will fail")
 //	t.Error("Test of failure")
