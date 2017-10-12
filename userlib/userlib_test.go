@@ -23,6 +23,10 @@ func TestDatastore(t *testing.T){
 	if !valid || string(data) != "bar" {
 		t.Error("Improper fetch")
 	}
+	_, valid = DatastoreGet("bar")
+	if valid {
+		t.Error("Returned when nothing, oops")
+	}
 	t.Log("Datastore fetch", data)
 	t.Log("Datastore map", DatastoreGetMap())
 	DatastoreClear()

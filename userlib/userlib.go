@@ -37,13 +37,21 @@ var keystore = make(map[string] rsa.PublicKey)
 
 
 // Sets the value in the datastore
+// Changed it to be copying
 func DatastoreSet(key string, value []byte){
-	datastore[key] = value
+	foo := make([]byte, len(value))
+	copy(foo, value)
+	datastore[key] = foo
 }
 
 // Returns the value if it exists
 func DatastoreGet(key string) (value []byte, ok bool){
 	value, ok = datastore[key]
+	if ok && value != nil {
+		foo := make([]byte, len(value))
+		copy(foo, value)
+		return foo, ok
+	}
 	return
 }
 
