@@ -1,7 +1,7 @@
 package userlib
+
 import "testing"
 import "encoding/hex"
-import "io"
 
 // Golang has a very powerful routine for building tests.
 
@@ -12,8 +12,7 @@ import "io"
 
 // And "go test -cover" to check your code coverage in your tests
 
-
-func TestDatastore(t *testing.T){
+func TestDatastore(t *testing.T) {
 	DatastoreSet("foo", []byte("bar"))
 	data, valid := DatastoreGet("bar")
 	if valid {
@@ -31,10 +30,10 @@ func TestDatastore(t *testing.T){
 	t.Log("Datastore map", DatastoreGetMap())
 	DatastoreClear()
 	t.Log("Datastore map", DatastoreGetMap())
-	
+
 }
 
-func TestRSA(t *testing.T){
+func TestRSA(t *testing.T) {
 	key, err := GenerateRSAKey()
 	if err != nil {
 		t.Error("Got RSA error", err)
@@ -53,14 +52,14 @@ func TestRSA(t *testing.T){
 	KeystoreGetMap()
 
 	bytes, err := RSAEncrypt(&pubkey,
-		[] byte ("Squeamish Ossifrage"),
-		[] byte ("Tag"))
+		[]byte("Squeamish Ossifrage"),
+		[]byte("Tag"))
 	if err != nil {
 		t.Error("got error", err)
 	}
 	decrypt, err := RSADecrypt(key,
-		bytes, [] byte("Tag"))
-	if err != nil || (string(decrypt) != "Squeamish Ossifrage"){
+		bytes, []byte("Tag"))
+	if err != nil || (string(decrypt) != "Squeamish Ossifrage") {
 		t.Error("Decryption failure", err)
 	}
 
@@ -79,16 +78,15 @@ func TestRSA(t *testing.T){
 		t.Error("RSA verification worked when it shouldn't")
 	}
 	t.Log("Error return", err)
-	
+
 }
 
+func TestHMAC(t *testing.T) {
+	msga := []byte("foo")
+	msgb := []byte("bar")
+	keya := []byte("baz")
+	keyb := []byte("boop")
 
-func TestHMAC(t *testing.T){
-	msga := [] byte ("foo")
-	msgb := [] byte ("bar")
-	keya := [] byte ("baz")
-	keyb := [] byte ("boop")
-	
 	mac := NewHMAC(keya)
 	mac.Write(msga)
 	maca := mac.Sum(nil)
@@ -109,24 +107,24 @@ func TestHMAC(t *testing.T){
 	macd := mac.Sum(nil)
 	if !Equal(maca, macd) {
 		t.Error("Macs are not equal when they should be")
-	}	
+	}
 }
 
-func TestPBKDF(t *testing.T){
-	val1 := PBKDF2Key([]byte("Password"),
+func TestArgon2(t *testing.T) {
+	val1 := Argon2Key([]byte("Password"),
 		[]byte("nosalt"),
-		32);
+		32)
 
-	val2 := PBKDF2Key([]byte("Password"),
+	val2 := Argon2Key([]byte("Password"),
 		[]byte("nosalt"),
-		64);
+		64)
 
-	val3 := PBKDF2Key([]byte("password"),
+	val3 := Argon2Key([]byte("password"),
 		[]byte("nosalt"),
-		32);
+		32)
 
 	if Equal(val1, val2) || Equal(val1, val3) || Equal(val2, val3) {
-		t.Error("PBKDF2 problem")
+		t.Error("Argon2 problem")
 	}
 	t.Log(hex.EncodeToString(val1))
 	t.Log(hex.EncodeToString(val2))
@@ -134,15 +132,14 @@ func TestPBKDF(t *testing.T){
 
 }
 
-func TestStreamCipher(t *testing.T){
+func TestStreamCipher(t *testing.T) {
 	key := []byte("example key 1234")
 	msg := "This is a Test"
-	ciphertext := make([] byte, BlockSize + len(msg))
+	ciphertext := make([]byte, BlockSize+len(msg))
 	iv := ciphertext[:BlockSize]
 	// Load random data
-	if _, err := io.ReadFull(Reader, iv); err != nil {
-		panic(err)
-	}
+	copy(iv, RandomBytes(BlockSize))
+
 	t.Log("Random IV", hex.EncodeToString(iv))
 	cipher := CFBEncrypter(key, iv)
 	cipher.XORKeyStream(ciphertext[BlockSize:], []byte(msg))
@@ -156,7 +153,6 @@ func TestStreamCipher(t *testing.T){
 		t.Error("Decryption failure")
 	}
 }
-
 
 // Deliberate fail example
 // func TestFailure(t *testing.T){
