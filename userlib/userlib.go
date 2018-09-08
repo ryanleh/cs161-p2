@@ -2,6 +2,13 @@ package userlib
 
 
 import (
+    "fmt"
+    "os"
+    "strings"
+    "time"
+
+    "io"
+
 	"crypto"
 	"crypto/rsa"
 	"crypto/rand"
@@ -12,8 +19,10 @@ import (
 	"crypto/cipher"
 	"crypto/aes"
 	// Need to run go get to get this
-	"golang.org/x/crypto/pbkdf2"
+	"golang.org/x/crypto/argon2"
 )
+
+type PrivateKey = rsa.PrivateKey
 
 // AES blocksize.
 var BlockSize = aes.BlockSize
@@ -27,10 +36,28 @@ var AESKeySize = 16
 // RSA keysize
 var RSAKeySize = 2048
 
-// We have a pointer to the crypto/rand reader here
-var Reader = rand.Reader
+var DebugPrint = false
 
+// Helper function: Does formatted printing to stderr if
+// the DebugPrint global is set.  All our testing ignores stderr,
+// so feel free to use this for any sort of testing you want
+func DebugMsg(format string, args ...interface{}) {
+	if DebugPrint {
+		msg := fmt.Sprintf("%v ", time.Now().Format("15:04:05.00000"))
+		fmt.Fprintf(os.Stderr,
+			msg+strings.Trim(format, "\r\n ")+"\n", args...)
+	}
+}
 
+// Helper function: Returns a byte slice of the specificed
+// size filled with random data
+func RandomBytes(bytes int) (data []byte) {
+	data = make([]byte, bytes)
+	if _, err := io.ReadFull(rand.Reader, data); err != nil {
+		panic(err)
+	}
+	return
+}
 
 var datastore = make(map[string] []byte)
 var keystore = make(map[string] rsa.PublicKey)
@@ -120,7 +147,7 @@ func RSADecrypt(priv *rsa.PrivateKey, msg [] byte, tag [] byte)([] byte, error){
 // Signature generation
 func RSASign(priv *rsa.PrivateKey, msg [] byte)([]byte, error){
 	hashed := sha256.Sum256(msg)
-	return rsa.SignPKCS1v15(Reader, priv, crypto.SHA256, hashed[:])
+	return rsa.SignPKCS1v15(rand.Reader, priv, crypto.SHA256, hashed[:])
 }
 
 // Signature verification
@@ -145,14 +172,14 @@ func NewSHA256() (hash.Hash){
 	return sha256.New()
 }
 
-// PBKDF2:  Automatically choses a decent iteration and
-// uses SHA256
-func PBKDF2Key(password []byte, salt []byte,
-	keyLen int) [] byte {
-	return pbkdf2.Key(password, salt,
-		4096,
-		keyLen,
-		sha256.New)
+// Argon2:  Automatically choses a decent combination of iterations and memory
+func Argon2Key(password []byte, salt []byte,
+	keyLen uint32) [] byte {
+	return argon2.IDKey(password, salt,
+		1,
+        64 * 1024,
+        4,
+		keyLen)
 
 }
 
