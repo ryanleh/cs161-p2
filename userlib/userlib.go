@@ -21,6 +21,7 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
+// RSA private key's type
 type PrivateKey = rsa.PrivateKey
 
 // AES blocksize.
