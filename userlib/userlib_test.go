@@ -1,7 +1,7 @@
 package userlib
 
 import "testing"
-import "encoding/hex"
+// import "encoding/hex"
 import "github.com/google/uuid"
 
 // Golang has a very powerful routine for building tests.
