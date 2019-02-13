@@ -1,54 +1,57 @@
 package userlib
 
 import (
-	"fmt"
-	"os"
-	"strings"
-	"time"
+    "fmt"
+    "os"
+    "strings"
+    "time"
+    "errors"
 
-	"io"
+    "io"
 
-	"crypto"
-	"crypto/rsa"
-	"crypto/hmac"
-	"crypto/rand"
-	"crypto/sha512"
-	"crypto/ecdsa"
-	"crypto/aes"
-	"crypto/cipher"
-	"hash"
+    "crypto"
+    "crypto/rsa"
+    "crypto/hmac"
+    "crypto/rand"
+    "crypto/sha512"
+    "crypto/ecdsa"
+    "crypto/aes"
+    "crypto/cipher"
 
-	"github.com/deckarep/golang-set"
-	"golang.org/x/crypto/argon2"
-        "github.com/google/uuid"
+    "github.com/deckarep/golang-set"
+    "golang.org/x/crypto/argon2"
+    "github.com/google/uuid"
 )
 
 type UUID = uuid.UUID
 
 type PKEEncKey struct {
-	keyType UUID
+	keyType string
 	pubKey rsa.PublicKey
 }
 
 type PKEDecKey struct {
-	keyType UUID
+	keyType string
 	privKey rsa.PrivateKey
 }
 
 type DSSignKey struct {
-	keyType UUID
+	keyType string
 	privKey rsa.PrivateKey
 }
 
 type DSVerifyKey struct {
-	keyType UUID
+	keyType string
 	pubKey rsa.PublicKey
 }
 
 type PK struct {
-	keyType UUID
+	keyType string
 	pubKey rsa.PublicKey
 }
+
+// RSA keysize
+var RSAKeySize = 1024
 
 // AES blocksize.
 var AESBlockSize = aes.BlockSize
@@ -102,7 +105,7 @@ func DatastoreSet(key UUID, value []byte) {
 	foo := make([]byte, len(value))
 	copy(foo, value)
 
-	datastore[UUID] = foo
+	datastore[key] = foo
 }
 
 // Returns the value if it exists
@@ -170,14 +173,14 @@ func PKEKeyGen() (PKEEncKey, PKEDecKey, error) {
 
 	var PKEDecKeyRes PKEDecKey
 	PKEDecKeyRes.keyType = "PKE"
-	PKEDecKeyRes.privKey = RSAPrivKey
+	PKEDecKeyRes.privKey = *RSAPrivKey
 
 	return PKEEncKeyRes, PKEDecKeyRes, err
 }
 
 // Encrypts a byte stream via RSA-OAEP / sha256 as hash
 func PKEEnc(ek PKEEncKey, plaintext []byte) ([]byte, error) {
-	RSAPubKey := ek.RSAPubKey
+	RSAPubKey := &ek.pubKey
 
 	if ek.keyType != "PKE" {
 		return nil, errors.New("Using a non-PKE key for PKE.")
@@ -190,13 +193,15 @@ func PKEEnc(ek PKEEncKey, plaintext []byte) ([]byte, error) {
 
 // Decrypts a byte stream
 func PKEDec(dk PKEDecKey, ciphertext []byte) ([]byte, error) {
-	RSAPrivKey := dk.RSAPrivKey
+	RSAPrivKey := &dk.privKey
 
-	if dk.RSAKeyType != "PKE" {
+	if dk.keyType != "PKE" {
 		return nil, errors.New("Using a non-PKE key for PKE.")
 	}
 
 	plaintext, err := rsa.DecryptOAEP(sha512.New(), rand.Reader, RSAPrivKey, ciphertext, nil)
+
+        return plaintext, err
 }
 
 /*
@@ -211,39 +216,45 @@ func DSKeyGen() (DSSignKey, DSVerifyKey, error) {
 	RSAPrivKey, err := rsa.GenerateKey(rand.Reader, RSAKeySize)
 	RSAPubKey := RSAPrivKey.PublicKey
 
-	var DSSignKeyRes  DSSignKey
+	var DSSignKeyRes DSSignKey
 	DSSignKeyRes.keyType = "DS"
-	DSSignKeyRes.privKey = RSAPrivKey
+	DSSignKeyRes.privKey = *RSAPrivKey
 
 	var DSVerifyKeyRes DSVerifyKey
-	DSSignKeyRes.keyType = "DS"
-	DSSignKeyRes.pubKey = RSAPubKey
+	DSVerifyKeyRes.keyType = "DS"
+	DSVerifyKeyRes.pubKey = RSAPubKey
 
-	return DSSignKey, DSVerifyKey, err
+	return DSSignKeyRes, DSVerifyKeyRes, err
 }
 
 // Signs a byte stream via SHA256 and PKCS1v15
 func DSSign(sk DSSignKey, msg []byte) ([]byte, error) {
-	RSAPrivKey := sk.privKey
+	RSAPrivKey := &sk.privKey
 
 	if sk.keyType != "DS" {
 		return nil, errors.New("Using a non-DS key for DS.")
 	}
 
 	hashed := sha512.Sum512(msg)
-	return rsa.SignPKCS1v15(rand.Reader, RSAPrivKey, crypto.SHA512, hashed[:])
+
+        sig, err := rsa.SignPKCS1v15(rand.Reader, RSAPrivKey, crypto.SHA512, hashed[:])
+
+        return sig, err
 }
 
 // Verifies a signature
 func DSVerify(vk DSVerifyKey, msg []byte, sig []byte) error {
-	RSAPubKey := vk.pubKey
+	RSAPubKey := &vk.pubKey
 
-	if vk.RSAKeyType != "DS" {
-		return nil, errors.New("Using a non-DS key for DS.")
+	if vk.keyType != "DS" {
+		return errors.New("Using a non-DS key for DS.")
 	}
 
 	hashed := sha512.Sum512(msg)
-	return rsa.SignPKCS1v15(rand.Reader, RSAPubKey, crypto.SHA512, hashed[:])
+
+        err := rsa.VerifyPKCS1v15(RSAPubKey, crypto.SHA512, hashed[:], sig)
+
+        return err
 }
 
 /*
@@ -255,17 +266,17 @@ func DSVerify(vk DSVerifyKey, msg []byte, sig []byte) error {
 
 // Eval the MAC
 func MACEval(key []byte, msg []byte) []byte {
-	h = hmac.New(sha512.New, key)
-	h.Write(msg)
-	res := h.Sum(nil)
+    mac := hmac.New(sha512.New(), key)
+    mac.Write(msg)
+    res := mac.Sum(nil)
 
-	return res
+    return res
 }
 
 // Equals comparison for hashes/MACs
 // Does NOT leak timing.
 func MACEqual(a []byte, b []byte) bool {
-	return hmac.Equal(a, b)
+    return hmac.Equal(a, b)
 }
 
 
