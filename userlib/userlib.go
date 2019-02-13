@@ -85,7 +85,7 @@ func RandBytes(bytes int) (data []byte) {
 }
 
 var datastore = make(map[UUID][]byte)
-var keystore = make(map[UUID]PK)
+var keystore = make(map[UUID]rsa.PublicKey)
 
 //var 
 
@@ -98,15 +98,15 @@ var keystore = make(map[UUID]PK)
 */
 
 // Sets the value in the datastore
-func DatastoreSet(key string, value []byte) {
+func DatastoreSet(key UUID, value []byte) {
 	foo := make([]byte, len(value))
 	copy(foo, value)
 
-	datastore[key] = foo
+	datastore[UUID] = foo
 }
 
 // Returns the value if it exists
-func DatastoreGet(key string) (value []byte, ok bool) {
+func DatastoreGet(key UUID) (value []byte, ok bool) {
 	value, ok = datastore[key]
 	if ok && value != nil {
 		foo := make([]byte, len(value))
@@ -117,37 +117,37 @@ func DatastoreGet(key string) (value []byte, ok bool) {
 }
 
 // Deletes a key
-func DatastoreDelete(key string) {
+func DatastoreDelete(key UUID) {
 	delete(datastore, key)
 }
 
 // Use this in testing to reset the datastore to empty
 func DatastoreClear() {
-	datastore = make(map[string][]byte)
+	datastore = make(map[UUID][]byte)
 }
 
 func KeystoreClear() {
-	keystore = make(map[string]interface{})
+	keystore = make(map[UUID]rsa.PublicKey)
 }
 
-func KeystoreSet(key string, value PK) {
+func KeystoreSet(key UUID, value rsa.PublicKey) {
 	keystore[key] = value
 }
 
-func KeystoreGet(key string) (value interface{}, ok bool) {
+func KeystoreGet(key UUID) (value rsa.PublicKey, ok bool) {
 	value, ok = keystore[key]
 	return
 }
 
 // Use this in testing to get the underlying map if you want
 // to play with the datastore.
-func DatastoreGetMap() map[string][]byte {
+func DatastoreGetMap() map[UUID][]byte {
 	return datastore
 }
 
 // Use this in testing to get the underlying map if you want 
 // to play with the keystore.
-func KeystoreGetMap() map[string]rsa.PublicKey {
+func KeystoreGetMap() map[UUID]rsa.PublicKey {
 	return keystore
 }
 
