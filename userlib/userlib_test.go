@@ -2,6 +2,7 @@ package userlib
 
 import "testing"
 import "encoding/hex"
+import "github.com/google/uuid"
 
 // Golang has a very powerful routine for building tests.
 
@@ -12,7 +13,29 @@ import "encoding/hex"
 
 // And "go test -cover" to check your code coverage in your tests
 
-func TestDatastore(t *testing.T) {
+func TestSyntax(t *testing.T) {
+    UUID1, err := uuid.FromBytes([]byte("foofoofoofoofoof"))
+    if err != nil {
+        t.Error("Got FromBytes error:", err)
+    }
+    t.Log(UUID1)
+
+    UUID2, err := uuid.FromBytes([]byte("foofoofoofoofoof"))
+    if err != nil {
+        t.Error("Got FromBytes error:", err)
+    }
+    t.Log(UUID2)
+
+    if UUID1 != UUID2 {
+        t.Error("UUID1 != UUID2")
+        t.Log("UUID1:", UUID1)
+        t.Log("UUID2:", UUID2)
+    }
+
+    t.Log("Done!")
+}
+
+/*func TestDatastore(t *testing.T) {
 	DatastoreSet("foo", []byte("bar"))
 	data, valid := DatastoreGet("bar")
 	if valid {
@@ -152,7 +175,7 @@ func TestStreamCipher(t *testing.T) {
 	if string(ciphertext[BlockSize:]) != msg {
 		t.Error("Decryption failure")
 	}
-}
+}*/
 
 // Deliberate fail example
 // func TestFailure(t *testing.T){
