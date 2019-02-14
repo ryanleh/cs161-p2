@@ -84,8 +84,8 @@ func RandBytes(bytes int) (data []byte) {
     return
 }
 
-var datastore = make(map[UUID][]byte)
-var keystore = make(map[UUID]rsa.PublicKey)
+var datastore map[UUID][]byte = make(map[UUID][]byte)
+var keystore map[UUID]rsa.PublicKey = make(map[UUID]rsa.PublicKey)
 
 //var 
 
