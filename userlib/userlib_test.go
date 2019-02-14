@@ -13,17 +13,27 @@ import "github.com/google/uuid"
 
 // And "go test -cover" to check your code coverage in your tests
 
-func TestUUIDFromBytesDeterministic(t *testing.T) {
-    UUID1, err := uuid.FromBytes([]byte("foofoofoofoofoof"))
+// Default test strings
+var key1 []byte = []byte("cs161teststring1")
+var key2 []byte = []byte("cs161teststring2")
+var key3 []byte = []byte("cs161teststring3")
+
+// Creates a UUID from the supplied bytes
+// Use for testing only!
+func UUIDFromBytes(t *testing.T, b []byte) (u UUID) {
+    u, err := uuid.FromBytes(b)
     if err != nil {
         t.Error("Got FromBytes error:", err)
     }
+
+    return
+}
+
+func TestUUIDFromBytesDeterministic(t *testing.T) {
+    UUID1 := UUIDFromBytes(t, key1)
     t.Log(UUID1)
 
-    UUID2, err := uuid.FromBytes([]byte("foofoofoofoofoof"))
-    if err != nil {
-        t.Error("Got FromBytes error:", err)
-    }
+    UUID2 := UUIDFromBytes(t, key1)
     t.Log(UUID2)
 
     if UUID1 != UUID2 {
@@ -31,29 +41,60 @@ func TestUUIDFromBytesDeterministic(t *testing.T) {
         t.Log("UUID1:", UUID1)
         t.Log("UUID2:", UUID2)
     }
-
-    t.Log("Done!")
 }
 
 func TestDatastore(t *testing.T) {
-    DatastoreSet("foo", []byte("bar"))
-    data, valid := DatastoreGet("bar")
+    UUID1 := UUIDFromBytes(t, key1)
+    UUID2 := UUIDFromBytes(t, key2)
+    UUID3 := UUIDFromBytes(t, key3)
+
+    DatastoreSet(UUID1, []byte("foo"))
+
+    data, valid := DatastoreGet(UUID3)
     if valid {
-        t.Error("Improper fetch")
+        t.Error("Datastore fetched UUID3 when it wasn't supposed to")
     }
-    data, valid = DatastoreGet("foo")
-    if !valid || string(data) != "bar" {
-        t.Error("Improper fetch")
+
+    data, valid = DatastoreGet(UUID1)
+    if !valid || string(data) != "foo" {
+        t.Error("Error with fetching 'foo' from UUID1")
     }
-    _, valid = DatastoreGet("bar")
+
+    _, valid = DatastoreGet(UUID3)
     if valid {
         t.Error("Returned when nothing, oops")
     }
+
+    DatastoreSet(UUID2, []byte("bar"))
+
+    data, valid = DatastoreGet(UUID1)
+    if !valid || string(data) != "foo" {
+        t.Error("Error with fetching 'foo' from UUID1")
+    }
+
+    DatastoreDelete(UUID1)
+
+    _, valid = DatastoreGet(UUID1)
+    if valid {
+        t.Error("DatastoreGet succeeded even after deleting UUID1")
+    }
+
+    data, valid = DatastoreGet(UUID2)
+    if !valid || string(data) != "bar" {
+        t.Error("Error with fetching 'bar' from UUID2")
+    }
+
+    DatastoreClear()
+
+    _, valid = DatastoreGet(UUID2)
+    if valid {
+        t.Error("DatastoreGet succeeded even after DatastoreClear")
+    }
+
     t.Log("Datastore fetch", data)
     t.Log("Datastore map", DatastoreGetMap())
     DatastoreClear()
     t.Log("Datastore map", DatastoreGetMap())
-
 }
 
 /*func TestRSA(t *testing.T) {
