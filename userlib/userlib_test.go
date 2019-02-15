@@ -213,26 +213,35 @@ func TestMAC(t *testing.T) {
     }
 }
 
+func TestKDF(t *testing.T) {
+    key1, err := KDFNewKey([]byte("foo"), nil)
+    if err != nil {
+        t.Error("KDFNewKey 1 error")
+    }
+
+    key2, err := KDFNewKey([]byte("foo"), nil)
+    if err != nil {
+        t.Error("KDFNewKey 2 error")
+    }
+
+    if !bytes.Equal(key1, key2) {
+        t.Error("KDFNewKey returned different keys for same password")
+    }
+}
+
 func TestArgon2(t *testing.T) {
-    val1 := Argon2Key([]byte("Password"),
-    []byte("nosalt"),
-    32)
+    val1 := Argon2Key([]byte("Password"), []byte("nosalt"), 32)
+    val2 := Argon2Key([]byte("Password"), []byte("nosalt"), 64)
+    val3 := Argon2Key([]byte("password"), []byte("nosalt"), 32)
 
-    val2 := Argon2Key([]byte("Password"),
-    []byte("nosalt"),
-    64)
+    equal := bytes.Equal
 
-    val3 := Argon2Key([]byte("password"),
-    []byte("nosalt"),
-    32)
-
-    if bytes.Equal(val1, val2) || bytes.Equal(val1, val3) || bytes.Equal(val2, val3) {
+    if equal(val1, val2) || equal(val1, val3) || equal(val2, val3) {
         t.Error("Argon2 problem")
     }
     t.Log(hex.EncodeToString(val1))
     t.Log(hex.EncodeToString(val2))
     t.Log(hex.EncodeToString(val3))
-
 }
 
 func TestStreamCipher(t *testing.T) {

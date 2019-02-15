@@ -24,19 +24,14 @@ import (
 
 type UUID = uuid.UUID
 
-type PK struct {
-    keyType string
-    pubKey rsa.PublicKey
-}
-
-// RSA keysize
+// RSA key size
 var RSAKeySize = 2048
 
-// AES constants
+// AES block size and key size
 var AESBlockSize = aes.BlockSize
 var AESKeySize = 16
 
-// Hash/MAC size
+// Hash and MAC size
 var HashSize = sha512.Size
 
 
@@ -280,7 +275,7 @@ func MACEqual(a []byte, b []byte) bool {
 /*
 ********************************************
 **               KDF                      **
-**            KDFNewKey                   **
+**       KDFNewKey, Argon2Key             **
 ********************************************
 */
 
