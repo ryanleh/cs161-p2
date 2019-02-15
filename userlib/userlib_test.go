@@ -232,29 +232,20 @@ func TestMAC(t *testing.T) {
     t.Log(hex.EncodeToString(val2))
     t.Log(hex.EncodeToString(val3))
 
-}
+}*/
 
 func TestStreamCipher(t *testing.T) {
-    key := []byte("example key 1234")
-    msg := "This is a Test"
-    ciphertext := make([]byte, BlockSize+len(msg))
-    iv := ciphertext[:BlockSize]
-    // Load random data
-    copy(iv, RandomBytes(BlockSize))
+    iv := RandBytes(16)
+    t.Log("Random IV", iv)
 
-    t.Log("Random IV", hex.EncodeToString(iv))
-    cipher := CFBEncrypter(key, iv)
-    cipher.XORKeyStream(ciphertext[BlockSize:], []byte(msg))
-    t.Log("Message  ", hex.EncodeToString(ciphertext))
+    ciphertext := SymEnc(key1, iv, []byte("foo"))
+    decryption := SymDec(key1, ciphertext)
 
-    cipher = CFBDecrypter(key, iv)
-    // Yes you can do this in-place
-    cipher.XORKeyStream(ciphertext[BlockSize:], ciphertext[BlockSize:])
-    t.Log("Decrypted messagege", string(ciphertext[BlockSize:]))
-    if string(ciphertext[BlockSize:]) != msg {
-        t.Error("Decryption failure")
+    t.Log("Decrypted messagege:", string(decryption))
+    if string(decryption) != "foo" {
+        t.Error("Symmetric decryption failure")
     }
-}*/
+}
 
 // Deliberate fail example
 // func TestFailure(t *testing.T){

@@ -312,7 +312,7 @@ func Argon2Key(password []byte, salt []byte, keyLen uint32) []byte {
 // Length of iv should be == AESBlockSize
 func SymEnc(key []byte, iv []byte, plaintext []byte) []byte {
     if len(iv) != AESBlockSize {
-        panic("IV length not equal to AES bloc size")
+        panic("IV length not equal to AESBlockSize")
     }
 
     block, err := aes.NewCipher(key)
@@ -329,6 +329,17 @@ func SymEnc(key []byte, iv []byte, plaintext []byte) []byte {
     return ciphertext
 }
 
-func SymDec(key []byte, iv []byte, ciphertext []byte) []byte {
-    return SymEnc(key, iv, ciphertext)
+func SymDec(key []byte, ciphertext []byte) []byte {
+    block, err := aes.NewCipher(key)
+    if err != nil {
+        panic(err)
+    }
+
+    iv := ciphertext[:AESBlockSize]
+    plaintext := make([]byte, len(ciphertext) - AESBlockSize)
+    stream := cipher.NewCTR(block, iv)
+
+    stream.XORKeyStream(plaintext, ciphertext[aes.BlockSize:])
+
+    return plaintext
 }
