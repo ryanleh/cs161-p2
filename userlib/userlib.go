@@ -54,9 +54,9 @@ func DebugMsg(format string, args ...interface{}) {
     }
 }
 
-// RandBytes. Helper function: Returns a byte slice of the specificed
+// RandomBytes. Helper function: Returns a byte slice of the specificed
 // size filled with random data
-func RandBytes(bytes int) (data []byte) {
+func RandomBytes(bytes int) (data []byte) {
     data = make([]byte, bytes)
     if _, err := io.ReadFull(rand.Reader, data); err != nil {
         panic(err)

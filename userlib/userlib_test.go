@@ -236,7 +236,7 @@ func TestArgon2(t *testing.T) {
 }
 
 func TestStreamCipher(t *testing.T) {
-    iv := RandBytes(16)
+    iv := RandomBytes(16)
     t.Log("Random IV", iv)
 
     ciphertext := SymEnc(key1, iv, []byte("foo"))
