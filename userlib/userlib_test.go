@@ -1,7 +1,8 @@
 package userlib
 
 import "testing"
-// import "encoding/hex"
+import "bytes"
+import "encoding/hex"
 import "github.com/google/uuid"
 
 // Golang has a very powerful routine for building tests.
@@ -212,7 +213,7 @@ func TestMAC(t *testing.T) {
     }
 }
 
-/*func TestArgon2(t *testing.T) {
+func TestArgon2(t *testing.T) {
     val1 := Argon2Key([]byte("Password"),
     []byte("nosalt"),
     32)
@@ -225,14 +226,14 @@ func TestMAC(t *testing.T) {
     []byte("nosalt"),
     32)
 
-    if Equal(val1, val2) || Equal(val1, val3) || Equal(val2, val3) {
+    if bytes.Equal(val1, val2) || bytes.Equal(val1, val3) || bytes.Equal(val2, val3) {
         t.Error("Argon2 problem")
     }
     t.Log(hex.EncodeToString(val1))
     t.Log(hex.EncodeToString(val2))
     t.Log(hex.EncodeToString(val3))
 
-}*/
+}
 
 func TestStreamCipher(t *testing.T) {
     iv := RandBytes(16)
