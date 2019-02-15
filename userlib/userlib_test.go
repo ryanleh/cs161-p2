@@ -17,6 +17,8 @@ import "github.com/google/uuid"
 var key1 []byte = []byte("cs161teststring1")
 var key2 []byte = []byte("cs161teststring2")
 var key3 []byte = []byte("cs161teststring3")
+var key4 []byte = []byte("cs161teststring4")
+var key5 []byte = []byte("cs161teststring5")
 
 // Creates a UUID from the supplied bytes
 // Use for testing only!
@@ -50,12 +52,12 @@ func TestDatastore(t *testing.T) {
 
     DatastoreSet(UUID1, []byte("foo"))
 
-    data, valid := DatastoreGet(UUID3)
+    _, valid := DatastoreGet(UUID3)
     if valid {
         t.Error("Datastore fetched UUID3 when it wasn't supposed to")
     }
 
-    data, valid = DatastoreGet(UUID1)
+    data, valid := DatastoreGet(UUID1)
     if !valid || string(data) != "foo" {
         t.Error("Error with fetching 'foo' from UUID1")
     }
@@ -95,6 +97,47 @@ func TestDatastore(t *testing.T) {
     t.Log("Datastore map", DatastoreGetMap())
     DatastoreClear()
     t.Log("Datastore map", DatastoreGetMap())
+}
+
+func TestKeystore(t *testing.T) {
+    UUID1 := UUIDFromBytes(t, key1)
+    UUID2 := UUIDFromBytes(t, key2)
+    UUID3 := UUIDFromBytes(t, key3)
+
+    RSAPubKey, _, _ := PKEKeyGen()
+    _, DSVerifyKey, _ := DSKeyGen()
+    pubKey := RSAPubKey.pubKey
+    verKey := DSVerifyKey.pubKey
+
+    KeystoreSet(UUID1, pubKey)
+    KeystoreSet(UUID2, verKey)
+
+    _, valid := KeystoreGet(UUID3)
+    if valid {
+        t.Error("Keystore fetched UUID3 when it wasn't supposed to")
+    }
+
+    data, valid := KeystoreGet(UUID1)
+    if !valid || data.N.Cmp(pubKey.N) != 0 || data.E != pubKey.E {
+        t.Error("Key stored at UUID1 doesn't match")
+    }
+
+    data, valid = KeystoreGet(UUID2)
+    if !valid || data.N.Cmp(verKey.N) != 0 || data.E != verKey.E {
+        t.Error("Key stored at UUID2 doesn't match")
+    }
+
+    KeystoreClear()
+
+    _, valid = KeystoreGet(UUID1)
+    if valid {
+        t.Error("KeystoreGet succeeded even after KeystoreClear")
+    }
+
+    t.Log("Keystore fetch", data)
+    t.Log("Keystore map", KeystoreGetMap())
+    KeystoreClear()
+    t.Log("Keystore map", KeystoreGetMap())
 }
 
 /*func TestRSA(t *testing.T) {
