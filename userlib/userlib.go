@@ -24,26 +24,6 @@ import (
 
 type UUID = uuid.UUID
 
-type PKEEncKey struct {
-    keyType string
-    pubKey rsa.PublicKey
-}
-
-type PKEDecKey struct {
-    keyType string
-    privKey rsa.PrivateKey
-}
-
-type DSSignKey struct {
-    keyType string
-    privKey rsa.PrivateKey
-}
-
-type DSVerifyKey struct {
-    keyType string
-    pubKey rsa.PublicKey
-}
-
 type PK struct {
     keyType string
     pubKey rsa.PublicKey
@@ -158,6 +138,26 @@ func KeystoreGetMap() map[UUID]rsa.PublicKey {
 **       PKEKeyGen, PKEEnc, PKEDec        **
 ********************************************
 */
+
+type PKEEncKey struct {
+    keyType string
+    pubKey rsa.PublicKey
+}
+
+type PKEDecKey struct {
+    keyType string
+    privKey rsa.PrivateKey
+}
+
+type DSSignKey struct {
+    keyType string
+    privKey rsa.PrivateKey
+}
+
+type DSVerifyKey struct {
+    keyType string
+    pubKey rsa.PublicKey
+}
 
 // Generates a key pair for public-key encryption via RSA
 func PKEKeyGen() (PKEEncKey, PKEDecKey, error) {

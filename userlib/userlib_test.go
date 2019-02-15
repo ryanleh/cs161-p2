@@ -191,36 +191,28 @@ func TestRSA(t *testing.T) {
     t.Log("Error return", err)
 }
 
-/*func TestHMAC(t *testing.T) {
+func TestMAC(t *testing.T) {
     msga := []byte("foo")
     msgb := []byte("bar")
-    keya := []byte("baz")
-    keyb := []byte("boop")
 
-    mac := NewHMAC(keya)
-    mac.Write(msga)
-    maca := mac.Sum(nil)
-    mac = NewHMAC(keya)
-    mac.Write(msgb)
-    macb := mac.Sum(nil)
-    if Equal(maca, macb) {
+    mac1a := MACEval(key1, msga)
+    mac1b := MACEval(key1, msgb)
+    if MACEqual(mac1a, mac1b) {
         t.Error("MACs are equal for different data")
     }
-    mac = NewHMAC(keyb)
-    mac.Write(msga)
-    macc := mac.Sum(nil)
-    if Equal(maca, macc) {
+
+    mac2a := MACEval(key2, msga)
+    if MACEqual(mac1a, mac2a) {
         t.Error("MACs are equal for different key")
     }
-    mac = NewHMAC(keya)
-    mac.Write(msga)
-    macd := mac.Sum(nil)
-    if !Equal(maca, macd) {
+
+    mac1a2 := MACEval(key1, msga)
+    if !MACEqual(mac1a, mac1a2) {
         t.Error("Macs are not equal when they should be")
     }
 }
 
-func TestArgon2(t *testing.T) {
+/*func TestArgon2(t *testing.T) {
     val1 := Argon2Key([]byte("Password"),
     []byte("nosalt"),
     32)
