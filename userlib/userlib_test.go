@@ -104,10 +104,18 @@ func TestKeystore(t *testing.T) {
     UUID2 := UUIDFromBytes(t, key2)
     UUID3 := UUIDFromBytes(t, key3)
 
-    RSAPubKey, _, _ := PKEKeyGen()
-    _, DSVerifyKey, _ := DSKeyGen()
+    RSAPubKey, _, err1 := PKEKeyGen()
+    _, DSVerifyKey, err2 := DSKeyGen()
     pubKey := RSAPubKey.pubKey
     verKey := DSVerifyKey.pubKey
+
+    if err1 != nil || err2 != nil {
+        t.Error("PKEKeyGen() failed")
+    }
+
+    if pubKey.N.Cmp(verKey.N) == 0 && pubKey.E == verKey.E {
+        t.Error("PKEKeyGen() and DSKeyGen() returned same key")
+    }
 
     KeystoreSet(UUID1, pubKey)
     KeystoreSet(UUID2, verKey)
@@ -140,55 +148,50 @@ func TestKeystore(t *testing.T) {
     t.Log("Keystore map", KeystoreGetMap())
 }
 
-/*func TestRSA(t *testing.T) {
-    key, err := GenerateRSAKey()
-    if err != nil {
-        t.Error("Got RSA error", err)
-    }
-    pubkey := key.PublicKey
-    KeystoreSet("foo", pubkey)
-    val, ok := KeystoreGet("foo")
-    if !ok || val != pubkey {
-        t.Error("Didn't fetch right")
-    }
-    _, ok = KeystoreGet("Bar")
-    if ok {
-        t.Error("Got a key when I shouldn't")
-    }
-    KeystoreClear()
-    KeystoreGetMap()
+func TestRSA(t *testing.T) {
 
-    bytes, err := RSAEncrypt(&pubkey,
-    []byte("Squeamish Ossifrage"),
-    []byte("Tag"))
+    // Test RSA Encrypt and Decrypt
+    RSAPubKey, RSAPrivKey, err := PKEKeyGen()
     if err != nil {
-        t.Error("got error", err)
-    }
-    decrypt, err := RSADecrypt(key,
-    bytes, []byte("Tag"))
-    if err != nil || (string(decrypt) != "Squeamish Ossifrage") {
-        t.Error("Decryption failure", err)
+        t.Error("PKEKeyGen() failed", err)
     }
 
-    bytes = []byte("Squeamish Ossifrage")
-    sign, err := RSASign(key, bytes)
+    t.Log(RSAPubKey.pubKey)
+    ciphertext, err := PKEEnc(RSAPubKey, []byte("Squeamish Ossifrage"))
+    if err != nil {
+        t.Error("PKEEnc() error", err)
+    }
+
+    plaintext, err := PKEDec(RSAPrivKey, ciphertext)
+    if err != nil || (string(plaintext) != "Squeamish Ossifrage") {
+        t.Error("Decryption failed", err)
+    }
+
+    // Test RSA Sign and Verify
+    DSSignKey, DSVerifyKey, err := DSKeyGen()
+    if err != nil {
+        t.Error("DSKeyGen() failed", err)
+    }
+
+    sign, err := DSSign(DSSignKey, []byte("Squeamish Ossifrage"))
     if err != nil {
         t.Error("RSA sign failure")
     }
-    err = RSAVerify(&key.PublicKey, bytes, sign)
+
+    err = DSVerify(DSVerifyKey, []byte("Squeamish Ossifrage"), sign)
     if err != nil {
         t.Error("RSA verification failure")
     }
-    bytes[0] = 3
-    err = RSAVerify(&key.PublicKey, bytes, sign)
+
+    err = DSVerify(DSVerifyKey, []byte("foo"), sign)
     if err == nil {
         t.Error("RSA verification worked when it shouldn't")
     }
-    t.Log("Error return", err)
 
+    t.Log("Error return", err)
 }
 
-func TestHMAC(t *testing.T) {
+/*func TestHMAC(t *testing.T) {
     msga := []byte("foo")
     msgb := []byte("bar")
     keya := []byte("baz")

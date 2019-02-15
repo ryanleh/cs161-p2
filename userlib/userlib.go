@@ -50,7 +50,7 @@ type PK struct {
 }
 
 // RSA keysize
-var RSAKeySize = 1024
+var RSAKeySize = 2048
 
 // AES constants
 var AESBlockSize = aes.BlockSize
