@@ -163,8 +163,8 @@ func TestRSA(t *testing.T) {
         t.Error("PKEEnc() error", err)
     }
 
-    plaintext, err := PKEDec(RSAPrivKey, ciphertext)
-    if err != nil || (string(plaintext) != "Squeamish Ossifrage") {
+    decryption, err := PKEDec(RSAPrivKey, ciphertext)
+    if err != nil || (string(decryption) != "Squeamish Ossifrage") {
         t.Error("Decryption failed", err)
     }
 
