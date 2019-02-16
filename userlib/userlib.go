@@ -269,6 +269,10 @@ func DSVerify(vk DSVerifyKey, msg []byte, sig []byte) error {
 
 // Evaluate the HMAC using sha512
 func HMACEval(key []byte, msg []byte) []byte {
+    if len(key) != 16 {
+       return errors.New("The input as key for HMAC should be a 16-byte key.")
+    }
+
     mac := hmac.New(sha512.New, key)
     mac.Write(msg)
     res := mac.Sum(nil)
