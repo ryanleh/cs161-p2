@@ -192,40 +192,24 @@ func TestRSA(t *testing.T) {
     t.Log("Error return", err)
 }
 
-func TestMAC(t *testing.T) {
+func TestHMAC(t *testing.T) {
     msga := []byte("foo")
     msgb := []byte("bar")
 
-    mac1a := MACEval(key1, msga)
-    mac1b := MACEval(key1, msgb)
-    if MACEqual(mac1a, mac1b) {
-        t.Error("MACs are equal for different data")
+    hmac1a := HMACEval(key1, msga)
+    hmac1b := HMACEval(key1, msgb)
+    if HMACEqual(hmac1a, hmac1b) {
+        t.Error("HMACs are equal for different data")
     }
 
-    mac2a := MACEval(key2, msga)
-    if MACEqual(mac1a, mac2a) {
-        t.Error("MACs are equal for different key")
+    hmac2a := HMACEval(key2, msga)
+    if HMACEqual(hmac1a, hmac2a) {
+        t.Error("HMACs are equal for different key")
     }
 
-    mac1a2 := MACEval(key1, msga)
-    if !MACEqual(mac1a, mac1a2) {
-        t.Error("Macs are not equal when they should be")
-    }
-}
-
-func TestKDF(t *testing.T) {
-    key1, err := KDFNewKey([]byte("foo"), nil)
-    if err != nil {
-        t.Error("KDFNewKey 1 error")
-    }
-
-    key2, err := KDFNewKey([]byte("foo"), nil)
-    if err != nil {
-        t.Error("KDFNewKey 2 error")
-    }
-
-    if !bytes.Equal(key1, key2) {
-        t.Error("KDFNewKey returned different keys for same password")
+    hmac1a2 := HMACEval(key1, msga)
+    if !HMACEqual(hmac1a, hmac1a2) {
+        t.Error("HMACs are not equal when they should be")
     }
 }
 

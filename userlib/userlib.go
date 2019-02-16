@@ -8,7 +8,6 @@ import (
     "errors"
 
     "io"
-    "encoding/json"
 
     "crypto"
     "crypto/rsa"
@@ -59,9 +58,11 @@ func RandomBytes(bytes int) (data []byte) {
     return
 }
 
+
 // Datastore and Keystore variables
 var datastore map[UUID][]byte = make(map[UUID][]byte)
 var keystore map[UUID]rsa.PublicKey = make(map[UUID]rsa.PublicKey)
+
 
 /*
 ********************************************
@@ -204,6 +205,7 @@ func PKEDec(dk PKEDecKey, ciphertext []byte) ([]byte, error) {
     return decryption, err
 }
 
+
 /*
 ********************************************
 **           Digital Signature            **
@@ -257,15 +259,16 @@ func DSVerify(vk DSVerifyKey, msg []byte, sig []byte) error {
     return err
 }
 
+
 /*
 ********************************************
-**                 MAC                    **
-**          MACEval, MACEqual             **
+**                HMAC                    **
+**         HMACEval, HMACEqual            **
 ********************************************
 */
 
-// Evaluate the MAC using sha512
-func MACEval(key []byte, msg []byte) []byte {
+// Evaluate the HMAC using sha512
+func HMACEval(key []byte, msg []byte) []byte {
     mac := hmac.New(sha512.New, key)
     mac.Write(msg)
     res := mac.Sum(nil)
@@ -275,7 +278,7 @@ func MACEval(key []byte, msg []byte) []byte {
 
 // Equals comparison for hashes/MACs
 // Does NOT leak timing.
-func MACEqual(a []byte, b []byte) bool {
+func HMACEqual(a []byte, b []byte) bool {
     return hmac.Equal(a, b)
 }
 
@@ -283,22 +286,9 @@ func MACEqual(a []byte, b []byte) bool {
 /*
 ********************************************
 **               KDF                      **
-**       KDFNewKey, Argon2Key             **
+**            Argon2Key                   **
 ********************************************
 */
-
-// Generate a new key from seed seed
-// Faster than Argon2 -- use this function for general purposes
-func KDFNewKey (seed []byte, info interface{}) ([]byte, error) {
-    mixed := []interface{}{seed, info, "MAC"}
-
-    json_mixed, err := json.Marshal(mixed)
-
-    h := sha512.Sum512(json_mixed)
-    res := h[0:16]
-
-    return res, err
-}
 
 // Argon2:  Automatically choses a decent combination of iterations and memory
 // Use this to generate a key from a password
