@@ -1,198 +1,342 @@
 package userlib
 
 import (
-	"fmt"
-	"os"
-	"strings"
-	"time"
+    "fmt"
+    "os"
+    "strings"
+    "time"
+    "errors"
 
-	"io"
+    "io"
 
-	"crypto"
-	"crypto/hmac"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha256"
-	"hash"
+    "crypto"
+    "crypto/rsa"
+    "crypto/hmac"
+    "crypto/rand"
+    "crypto/sha512"
+    "crypto/aes"
+    "crypto/cipher"
 
-	"crypto/aes"
-	"crypto/cipher"
-	// Need to run go get to get this
-	"golang.org/x/crypto/argon2"
+    "golang.org/x/crypto/argon2"
+    "github.com/google/uuid"
 )
 
-// RSA private key's type
-type PrivateKey = rsa.PrivateKey
+type UUID = uuid.UUID
 
-// AES blocksize.
-var BlockSize = aes.BlockSize
-
-// Hash/MAC size
-var HashSize = sha256.Size
-
-// AES keysize
-var AESKeySize = 16
-
-// RSA keysize
+// RSA key size
 var RSAKeySize = 2048
 
+// AES block size and key size
+var AESBlockSize = aes.BlockSize
+var AESKeySize = 16
+
+// Hash and MAC size
+var HashSize = sha512.Size
+
+
+// Debug print true/false
 var DebugPrint = false
 
-// Helper function: Does formatted printing to stderr if
+// DebugMsg. Helper function: Does formatted printing to stderr if
 // the DebugPrint global is set.  All our testing ignores stderr,
-// so feel free to use this for any sort of testing you want
+// so feel free to use this for any sort of testing you want.
 func DebugMsg(format string, args ...interface{}) {
-	if DebugPrint {
-		msg := fmt.Sprintf("%v ", time.Now().Format("15:04:05.00000"))
-		fmt.Fprintf(os.Stderr,
-			msg+strings.Trim(format, "\r\n ")+"\n", args...)
-	}
+    if DebugPrint {
+        msg := fmt.Sprintf("%v ", time.Now().Format("15:04:05.00000"))
+        fmt.Fprintf(os.Stderr,
+        msg+strings.Trim(format, "\r\n ")+"\n", args...)
+    }
 }
 
-// Helper function: Returns a byte slice of the specificed
+// RandomBytes. Helper function: Returns a byte slice of the specificed
 // size filled with random data
 func RandomBytes(bytes int) (data []byte) {
-	data = make([]byte, bytes)
-	if _, err := io.ReadFull(rand.Reader, data); err != nil {
-		panic(err)
-	}
-	return
+    data = make([]byte, bytes)
+    if _, err := io.ReadFull(rand.Reader, data); err != nil {
+        panic(err)
+    }
+    return
 }
 
-var datastore = make(map[string][]byte)
-var keystore = make(map[string]rsa.PublicKey)
+
+// Datastore and Keystore variables
+var datastore map[UUID][]byte = make(map[UUID][]byte)
+var keystore map[UUID]rsa.PublicKey = make(map[UUID]rsa.PublicKey)
+
+
+/*
+********************************************
+**           Datastore Functions          **
+**       DatastoreSet, DatastoreGet,      **
+**     DatastoreDelete, DatastoreClear    **
+********************************************
+*/
 
 // Sets the value in the datastore
-// Changed it to be copying
-func DatastoreSet(key string, value []byte) {
-	foo := make([]byte, len(value))
-	copy(foo, value)
-	datastore[key] = foo
+func DatastoreSet(key UUID, value []byte) {
+    foo := make([]byte, len(value))
+    copy(foo, value)
+
+    datastore[key] = foo
 }
 
 // Returns the value if it exists
-func DatastoreGet(key string) (value []byte, ok bool) {
-	value, ok = datastore[key]
-	if ok && value != nil {
-		foo := make([]byte, len(value))
-		copy(foo, value)
-		return foo, ok
-	}
-	return
+func DatastoreGet(key UUID) (value []byte, ok bool) {
+    value, ok = datastore[key]
+    if ok && value != nil {
+        foo := make([]byte, len(value))
+        copy(foo, value)
+        return foo, ok
+    }
+    return
 }
 
 // Deletes a key
-func DatastoreDelete(key string) {
-	delete(datastore, key)
+func DatastoreDelete(key UUID) {
+    delete(datastore, key)
 }
 
 // Use this in testing to reset the datastore to empty
 func DatastoreClear() {
-	datastore = make(map[string][]byte)
+    datastore = make(map[UUID][]byte)
 }
 
+// Use this in testing to reset the keystore to empty
 func KeystoreClear() {
-	keystore = make(map[string]rsa.PublicKey)
+    keystore = make(map[UUID]rsa.PublicKey)
 }
 
-func KeystoreSet(key string, value rsa.PublicKey) {
-	keystore[key] = value
+// Sets the value in the keystore
+func KeystoreSet(key UUID, value rsa.PublicKey) {
+    keystore[key] = value
 }
 
-func KeystoreGet(key string) (value rsa.PublicKey, ok bool) {
-	value, ok = keystore[key]
-	return
+// Returns the value if it exists
+func KeystoreGet(key UUID) (value rsa.PublicKey, ok bool) {
+    value, ok = keystore[key]
+    return
 }
 
 // Use this in testing to get the underlying map if you want
-// to f with the storage...  After all, the datastore is adversarial
-
-func DatastoreGetMap() map[string][]byte {
-	return datastore
+// to play with the datastore.
+func DatastoreGetMap() map[UUID][]byte {
+    return datastore
 }
 
-// Use this in testing to get the underlying map of the keystore.
-// But note the keystore is NOT considered adversarial
-func KeystoreGetMap() map[string]rsa.PublicKey {
-	return keystore
+// Use this in testing to get the underlying map if you want 
+// to play with the keystore.
+func KeystoreGetMap() map[UUID]rsa.PublicKey {
+    return keystore
 }
 
-// Generates an RSA private key by calling the crypto random function
-// and calling rsa.Generate()
-func GenerateRSAKey() (*rsa.PrivateKey, error) {
-	return rsa.GenerateKey(rand.Reader, RSAKeySize)
+
+/*
+********************************************
+**         Public Key Encryption          **
+**       PKEKeyGen, PKEEnc, PKEDec        **
+********************************************
+*/
+
+// Four structs to help you manage your different keys
+// You should only have 1 of each struct
+// keyType should be either:
+//     "PKE": encryption
+//     "DS": authentication and integrity
+
+type PKEEncKey struct {
+    keyType string
+    pubKey rsa.PublicKey
 }
 
-// Public key encryption using RSA-OAEP, using sha256 as the hash
-// and the label is nil
-func RSAEncrypt(pub *rsa.PublicKey, msg []byte, tag []byte) ([]byte, error) {
-	return rsa.EncryptOAEP(sha256.New(),
-		rand.Reader,
-		pub,
-		msg, tag)
+type PKEDecKey struct {
+    keyType string
+    privKey rsa.PrivateKey
 }
 
-// Public key decryption...
-func RSADecrypt(priv *rsa.PrivateKey, msg []byte, tag []byte) ([]byte, error) {
-	return rsa.DecryptOAEP(sha256.New(),
-		rand.Reader,
-		priv,
-		msg, tag)
+type DSSignKey struct {
+    keyType string
+    privKey rsa.PrivateKey
 }
 
-// Signature generation
-func RSASign(priv *rsa.PrivateKey, msg []byte) ([]byte, error) {
-	hashed := sha256.Sum256(msg)
-	return rsa.SignPKCS1v15(rand.Reader, priv, crypto.SHA256, hashed[:])
+type DSVerifyKey struct {
+    keyType string
+    pubKey rsa.PublicKey
 }
 
-// Signature verification
-func RSAVerify(pub *rsa.PublicKey, msg []byte, sig []byte) error {
-	hashed := sha256.Sum256(msg)
-	return rsa.VerifyPKCS1v15(pub, crypto.SHA256, hashed[:], sig)
+// Generates a key pair for public-key encryption via RSA
+func PKEKeyGen() (PKEEncKey, PKEDecKey, error) {
+    RSAPrivKey, err := rsa.GenerateKey(rand.Reader, RSAKeySize)
+    RSAPubKey := RSAPrivKey.PublicKey
+
+    var PKEEncKeyRes PKEEncKey
+    PKEEncKeyRes.keyType = "PKE"
+    PKEEncKeyRes.pubKey = RSAPubKey
+
+    var PKEDecKeyRes PKEDecKey
+    PKEDecKeyRes.keyType = "PKE"
+    PKEDecKeyRes.privKey = *RSAPrivKey
+
+    return PKEEncKeyRes, PKEDecKeyRes, err
 }
 
-// HMAC
-func NewHMAC(key []byte) hash.Hash {
-	return hmac.New(sha256.New, key)
+// Encrypts a byte stream via RSA-OAEP with sha512 as hash
+func PKEEnc(ek PKEEncKey, plaintext []byte) ([]byte, error) {
+    RSAPubKey := &ek.pubKey
+
+    if ek.keyType != "PKE" {
+        return nil, errors.New("Using a non-PKE key for PKE.")
+    }
+
+    ciphertext, err := rsa.EncryptOAEP(sha512.New(), rand.Reader, RSAPubKey, plaintext, nil)
+
+    return ciphertext, err
+}
+
+// Decrypts a byte stream encrypted with RSA-OAEP/sha512
+func PKEDec(dk PKEDecKey, ciphertext []byte) ([]byte, error) {
+    RSAPrivKey := &dk.privKey
+
+    if dk.keyType != "PKE" {
+        return nil, errors.New("Using a non-PKE key for PKE.")
+    }
+
+    decryption, err := rsa.DecryptOAEP(sha512.New(), rand.Reader, RSAPrivKey, ciphertext, nil)
+
+    return decryption, err
+}
+
+
+/*
+********************************************
+**           Digital Signature            **
+**       DSKeyGen, DSSign, DSVerify       **
+********************************************
+*/
+
+// Generates a key pair for digital signature via RSA
+func DSKeyGen() (DSSignKey, DSVerifyKey, error) {
+    RSAPrivKey, err := rsa.GenerateKey(rand.Reader, RSAKeySize)
+    RSAPubKey := RSAPrivKey.PublicKey
+
+    var DSSignKeyRes DSSignKey
+    DSSignKeyRes.keyType = "DS"
+    DSSignKeyRes.privKey = *RSAPrivKey
+
+    var DSVerifyKeyRes DSVerifyKey
+    DSVerifyKeyRes.keyType = "DS"
+    DSVerifyKeyRes.pubKey = RSAPubKey
+
+    return DSSignKeyRes, DSVerifyKeyRes, err
+}
+
+// Signs a byte stream via SHA256 and PKCS1v15
+func DSSign(sk DSSignKey, msg []byte) ([]byte, error) {
+    RSAPrivKey := &sk.privKey
+
+    if sk.keyType != "DS" {
+        return nil, errors.New("Using a non-DS key for DS.")
+    }
+
+    hashed := sha512.Sum512(msg)
+
+    sig, err := rsa.SignPKCS1v15(rand.Reader, RSAPrivKey, crypto.SHA512, hashed[:])
+
+    return sig, err
+}
+
+// Verifies a signature signed with SHA256 and PKCS1v15
+func DSVerify(vk DSVerifyKey, msg []byte, sig []byte) error {
+    RSAPubKey := &vk.pubKey
+
+    if vk.keyType != "DS" {
+        return errors.New("Using a non-DS key for DS.")
+    }
+
+    hashed := sha512.Sum512(msg)
+
+    err := rsa.VerifyPKCS1v15(RSAPubKey, crypto.SHA512, hashed[:], sig)
+
+    return err
+}
+
+
+/*
+********************************************
+**                HMAC                    **
+**         HMACEval, HMACEqual            **
+********************************************
+*/
+
+// Evaluate the HMAC using sha512
+func HMACEval(key []byte, msg []byte) []byte {
+    mac := hmac.New(sha512.New, key)
+    mac.Write(msg)
+    res := mac.Sum(nil)
+
+    return res
 }
 
 // Equals comparison for hashes/MACs
 // Does NOT leak timing.
-func Equal(a []byte, b []byte) bool {
-	return hmac.Equal(a, b)
+func HMACEqual(a []byte, b []byte) bool {
+    return hmac.Equal(a, b)
 }
 
-// SHA256 MAC
-func NewSHA256() hash.Hash {
-	return sha256.New()
-}
+
+/*
+********************************************
+**               KDF                      **
+**            Argon2Key                   **
+********************************************
+*/
 
 // Argon2:  Automatically choses a decent combination of iterations and memory
-func Argon2Key(password []byte, salt []byte,
-	keyLen uint32) []byte {
-	return argon2.IDKey(password, salt,
-		1,
-		64*1024,
-		4,
-		keyLen)
-
+// Use this to generate a key from a password
+func Argon2Key(password []byte, salt []byte, keyLen uint32) []byte {
+    return argon2.IDKey(password, salt, 1, 64*1024, 4, keyLen)
 }
 
-// Gets a stream cipher object for AES
-// Length of iv should be == BlockSize
-func CFBEncrypter(key []byte, iv []byte) cipher.Stream {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		panic(err)
-	}
-	return cipher.NewCFBEncrypter(block, iv)
+
+/*
+********************************************
+**        Symmetric Encryption            **
+**           SymEnc, SymDec               **
+********************************************
+*/
+
+// Encrypts a byte slice with AES-CTR
+// Length of iv should be == AESBlockSize
+func SymEnc(key []byte, iv []byte, plaintext []byte) []byte {
+    if len(iv) != AESBlockSize {
+        panic("IV length not equal to AESBlockSize")
+    }
+
+    block, err := aes.NewCipher(key)
+    if err != nil {
+        panic(err)
+    }
+
+    stream := cipher.NewCTR(block, iv)
+    ciphertext := make([]byte, AESBlockSize + len(plaintext))
+    copy(ciphertext[:AESBlockSize], iv)
+
+    stream.XORKeyStream(ciphertext[AESBlockSize:], plaintext)
+
+    return ciphertext
 }
 
-func CFBDecrypter(key []byte, iv []byte) cipher.Stream {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		panic(err)
-	}
-	return cipher.NewCFBDecrypter(block, iv)
+// Decrypts a ciphertext encrypted with AES-CTR
+func SymDec(key []byte, ciphertext []byte) []byte {
+    block, err := aes.NewCipher(key)
+    if err != nil {
+        panic(err)
+    }
+
+    iv := ciphertext[:AESBlockSize]
+    plaintext := make([]byte, len(ciphertext) - AESBlockSize)
+    stream := cipher.NewCTR(block, iv)
+
+    stream.XORKeyStream(plaintext, ciphertext[aes.BlockSize:])
+
+    return plaintext
 }
