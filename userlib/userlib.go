@@ -58,10 +58,15 @@ func RandomBytes(bytes int) (data []byte) {
     return
 }
 
+type PrivateKeyType interface {
+    keyType string
+    privKey rsa.PrivateKey
+}
+
 
 // Datastore and Keystore variables
 var datastore map[UUID][]byte = make(map[UUID][]byte)
-var keystore map[UUID]rsa.PublicKey = make(map[UUID]rsa.PublicKey)
+var keystore map[string]PrivateKeyType = make(map[string]PrivateKeyType)
 
 
 /*
@@ -103,16 +108,16 @@ func DatastoreClear() {
 
 // Use this in testing to reset the keystore to empty
 func KeystoreClear() {
-    keystore = make(map[UUID]rsa.PublicKey)
+    keystore = make(map[string]PrivateKeyType)
 }
 
 // Sets the value in the keystore
-func KeystoreSet(key UUID, value rsa.PublicKey) {
+func KeystoreSet(key string, value PrivateKeyType) {
     keystore[key] = value
 }
 
 // Returns the value if it exists
-func KeystoreGet(key UUID) (value rsa.PublicKey, ok bool) {
+func KeystoreGet(key string) (value PrivateKeyType, ok bool) {
     value, ok = keystore[key]
     return
 }
@@ -125,7 +130,7 @@ func DatastoreGetMap() map[UUID][]byte {
 
 // Use this in testing to get the underlying map if you want 
 // to play with the keystore.
-func KeystoreGetMap() map[UUID]rsa.PublicKey {
+func KeystoreGetMap() map[string]PrivateKeyType {
     return keystore
 }
 
