@@ -58,7 +58,7 @@ func RandomBytes(bytes int) (data []byte) {
     return
 }
 
-type PublicKeyType interface {
+type PublicKeyType struct {
     keyType string
     pubKey rsa.PublicKey
 }
