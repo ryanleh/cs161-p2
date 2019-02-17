@@ -63,7 +63,6 @@ type PublicKeyType struct {
     pubKey rsa.PublicKey
 }
 
-
 // Datastore and Keystore variables
 var datastore map[UUID][]byte = make(map[UUID][]byte)
 var keystore map[string]PublicKeyType = make(map[string]PublicKeyType)
