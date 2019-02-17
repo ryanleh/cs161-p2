@@ -2,10 +2,10 @@ package userlib
 
 import (
     "fmt"
-    "os"
     "strings"
     "time"
     "errors"
+    "log"
 
     "io"
 
@@ -43,8 +43,7 @@ var DebugPrint = false
 func DebugMsg(format string, args ...interface{}) {
     if DebugPrint {
         msg := fmt.Sprintf("%v ", time.Now().Format("15:04:05.00000"))
-        fmt.Fprintf(os.Stderr,
-        msg+strings.Trim(format, "\r\n ")+"\n", args...)
+        log.Printf(msg+strings.Trim(format, "\r\n ")+"\n", args...)
     }
 }
 
