@@ -63,6 +63,11 @@ type PublicKeyType struct {
     pubKey rsa.PublicKey
 }
 
+type PrivateKeyType struct {
+    keyType string
+    privKey rsa.PrivateKey
+}
+
 // Datastore and Keystore variables
 var datastore map[UUID][]byte = make(map[UUID][]byte)
 var keystore map[string]PublicKeyType = make(map[string]PublicKeyType)
@@ -147,25 +152,11 @@ func KeystoreGetMap() map[string]PublicKeyType {
 //     "PKE": encryption
 //     "DS": authentication and integrity
 
-type PKEEncKey struct {
-    keyType string
-    pubKey rsa.PublicKey
-}
+type PKEEncKey = PublicKeyType
+type PKEDecKey = PrivateKeyType
 
-type PKEDecKey struct {
-    keyType string
-    privKey rsa.PrivateKey
-}
-
-type DSSignKey struct {
-    keyType string
-    privKey rsa.PrivateKey
-}
-
-type DSVerifyKey struct {
-    keyType string
-    pubKey rsa.PublicKey
-}
+type DSSignKey = PrivateKeyType
+type DSVerifyKey = PublicKeyType
 
 // Generates a key pair for public-key encryption via RSA
 func PKEKeyGen() (PKEEncKey, PKEDecKey, error) {
