@@ -59,13 +59,13 @@ func RandomBytes(bytes int) (data []byte) {
 }
 
 type PublicKeyType struct {
-    keyType string
-    pubKey rsa.PublicKey
+    KeyType string
+    PubKey rsa.PublicKey
 }
 
 type PrivateKeyType struct {
-    keyType string
-    privKey rsa.PrivateKey
+    KeyType string
+    PrivKey rsa.PrivateKey
 }
 
 // Datastore and Keystore variables
@@ -170,21 +170,21 @@ func PKEKeyGen() (PKEEncKey, PKEDecKey, error) {
     RSAPubKey := RSAPrivKey.PublicKey
 
     var PKEEncKeyRes PKEEncKey
-    PKEEncKeyRes.keyType = "PKE"
-    PKEEncKeyRes.pubKey = RSAPubKey
+    PKEEncKeyRes.KeyType = "PKE"
+    PKEEncKeyRes.PubKey = RSAPubKey
 
     var PKEDecKeyRes PKEDecKey
-    PKEDecKeyRes.keyType = "PKE"
-    PKEDecKeyRes.privKey = *RSAPrivKey
+    PKEDecKeyRes.KeyType = "PKE"
+    PKEDecKeyRes.PrivKey = *RSAPrivKey
 
     return PKEEncKeyRes, PKEDecKeyRes, err
 }
 
 // Encrypts a byte stream via RSA-OAEP with sha512 as hash
 func PKEEnc(ek PKEEncKey, plaintext []byte) ([]byte, error) {
-    RSAPubKey := &ek.pubKey
+    RSAPubKey := &ek.PubKey
 
-    if ek.keyType != "PKE" {
+    if ek.KeyType != "PKE" {
         return nil, errors.New("Using a non-PKE key for PKE.")
     }
 
@@ -195,9 +195,9 @@ func PKEEnc(ek PKEEncKey, plaintext []byte) ([]byte, error) {
 
 // Decrypts a byte stream encrypted with RSA-OAEP/sha512
 func PKEDec(dk PKEDecKey, ciphertext []byte) ([]byte, error) {
-    RSAPrivKey := &dk.privKey
+    RSAPrivKey := &dk.PrivKey
 
-    if dk.keyType != "PKE" {
+    if dk.KeyType != "PKE" {
         return nil, errors.New("Using a non-PKE key for PKE.")
     }
 
@@ -220,21 +220,21 @@ func DSKeyGen() (DSSignKey, DSVerifyKey, error) {
     RSAPubKey := RSAPrivKey.PublicKey
 
     var DSSignKeyRes DSSignKey
-    DSSignKeyRes.keyType = "DS"
-    DSSignKeyRes.privKey = *RSAPrivKey
+    DSSignKeyRes.KeyType = "DS"
+    DSSignKeyRes.PrivKey = *RSAPrivKey
 
     var DSVerifyKeyRes DSVerifyKey
-    DSVerifyKeyRes.keyType = "DS"
-    DSVerifyKeyRes.pubKey = RSAPubKey
+    DSVerifyKeyRes.KeyType = "DS"
+    DSVerifyKeyRes.PubKey = RSAPubKey
 
     return DSSignKeyRes, DSVerifyKeyRes, err
 }
 
 // Signs a byte stream via SHA256 and PKCS1v15
 func DSSign(sk DSSignKey, msg []byte) ([]byte, error) {
-    RSAPrivKey := &sk.privKey
+    RSAPrivKey := &sk.PrivKey
 
-    if sk.keyType != "DS" {
+    if sk.KeyType != "DS" {
         return nil, errors.New("Using a non-DS key for DS.")
     }
 
@@ -247,7 +247,7 @@ func DSSign(sk DSSignKey, msg []byte) ([]byte, error) {
 
 // Verifies a signature signed with SHA256 and PKCS1v15
 func DSVerify(vk DSVerifyKey, msg []byte, sig []byte) error {
-    RSAPubKey := &vk.pubKey
+    RSAPubKey := &vk.PubKey
 
     if vk.keyType != "DS" {
         return errors.New("Using a non-DS key for DS.")
