@@ -2,10 +2,10 @@ package userlib
 
 import (
     "fmt"
-    "os"
     "strings"
     "time"
     "errors"
+    "log"
 
     "io"
 
@@ -40,11 +40,15 @@ var DebugPrint = false
 // DebugMsg. Helper function: Does formatted printing to stderr if
 // the DebugPrint global is set.  All our testing ignores stderr,
 // so feel free to use this for any sort of testing you want.
+
+func SetDebugStatus(status bool){
+	DebugPrint = status
+}
+
 func DebugMsg(format string, args ...interface{}) {
     if DebugPrint {
         msg := fmt.Sprintf("%v ", time.Now().Format("15:04:05.00000"))
-        fmt.Fprintf(os.Stderr,
-        msg+strings.Trim(format, "\r\n ")+"\n", args...)
+        log.Printf(msg+strings.Trim(format, "\r\n ")+"\n", args...)
     }
 }
 
@@ -58,10 +62,19 @@ func RandomBytes(bytes int) (data []byte) {
     return
 }
 
+type PublicKeyType struct {
+    KeyType string
+    PubKey rsa.PublicKey
+}
+
+type PrivateKeyType struct {
+    KeyType string
+    PrivKey rsa.PrivateKey
+}
 
 // Datastore and Keystore variables
 var datastore map[UUID][]byte = make(map[UUID][]byte)
-var keystore map[UUID]rsa.PublicKey = make(map[UUID]rsa.PublicKey)
+var keystore map[string]PublicKeyType = make(map[string]PublicKeyType)
 
 
 /*
@@ -103,16 +116,22 @@ func DatastoreClear() {
 
 // Use this in testing to reset the keystore to empty
 func KeystoreClear() {
-    keystore = make(map[UUID]rsa.PublicKey)
+    keystore = make(map[string]PublicKeyType)
 }
 
 // Sets the value in the keystore
-func KeystoreSet(key UUID, value rsa.PublicKey) {
+func KeystoreSet(key string, value PublicKeyType) error {
+    _, present := keystore[key]
+    if present != false {
+       return errors.New("That entry in the Keystore has been taken.")
+    }
+
     keystore[key] = value
+    return nil
 }
 
 // Returns the value if it exists
-func KeystoreGet(key UUID) (value rsa.PublicKey, ok bool) {
+func KeystoreGet(key string) (value PublicKeyType, ok bool) {
     value, ok = keystore[key]
     return
 }
@@ -125,7 +144,7 @@ func DatastoreGetMap() map[UUID][]byte {
 
 // Use this in testing to get the underlying map if you want 
 // to play with the keystore.
-func KeystoreGetMap() map[UUID]rsa.PublicKey {
+func KeystoreGetMap() map[string]PublicKeyType {
     return keystore
 }
 
@@ -143,25 +162,11 @@ func KeystoreGetMap() map[UUID]rsa.PublicKey {
 //     "PKE": encryption
 //     "DS": authentication and integrity
 
-type PKEEncKey struct {
-    keyType string
-    pubKey rsa.PublicKey
-}
+type PKEEncKey = PublicKeyType
+type PKEDecKey = PrivateKeyType
 
-type PKEDecKey struct {
-    keyType string
-    privKey rsa.PrivateKey
-}
-
-type DSSignKey struct {
-    keyType string
-    privKey rsa.PrivateKey
-}
-
-type DSVerifyKey struct {
-    keyType string
-    pubKey rsa.PublicKey
-}
+type DSSignKey = PrivateKeyType
+type DSVerifyKey = PublicKeyType
 
 // Generates a key pair for public-key encryption via RSA
 func PKEKeyGen() (PKEEncKey, PKEDecKey, error) {
@@ -169,21 +174,21 @@ func PKEKeyGen() (PKEEncKey, PKEDecKey, error) {
     RSAPubKey := RSAPrivKey.PublicKey
 
     var PKEEncKeyRes PKEEncKey
-    PKEEncKeyRes.keyType = "PKE"
-    PKEEncKeyRes.pubKey = RSAPubKey
+    PKEEncKeyRes.KeyType = "PKE"
+    PKEEncKeyRes.PubKey = RSAPubKey
 
     var PKEDecKeyRes PKEDecKey
-    PKEDecKeyRes.keyType = "PKE"
-    PKEDecKeyRes.privKey = *RSAPrivKey
+    PKEDecKeyRes.KeyType = "PKE"
+    PKEDecKeyRes.PrivKey = *RSAPrivKey
 
     return PKEEncKeyRes, PKEDecKeyRes, err
 }
 
 // Encrypts a byte stream via RSA-OAEP with sha512 as hash
 func PKEEnc(ek PKEEncKey, plaintext []byte) ([]byte, error) {
-    RSAPubKey := &ek.pubKey
+    RSAPubKey := &ek.PubKey
 
-    if ek.keyType != "PKE" {
+    if ek.KeyType != "PKE" {
         return nil, errors.New("Using a non-PKE key for PKE.")
     }
 
@@ -194,9 +199,9 @@ func PKEEnc(ek PKEEncKey, plaintext []byte) ([]byte, error) {
 
 // Decrypts a byte stream encrypted with RSA-OAEP/sha512
 func PKEDec(dk PKEDecKey, ciphertext []byte) ([]byte, error) {
-    RSAPrivKey := &dk.privKey
+    RSAPrivKey := &dk.PrivKey
 
-    if dk.keyType != "PKE" {
+    if dk.KeyType != "PKE" {
         return nil, errors.New("Using a non-PKE key for PKE.")
     }
 
@@ -219,21 +224,21 @@ func DSKeyGen() (DSSignKey, DSVerifyKey, error) {
     RSAPubKey := RSAPrivKey.PublicKey
 
     var DSSignKeyRes DSSignKey
-    DSSignKeyRes.keyType = "DS"
-    DSSignKeyRes.privKey = *RSAPrivKey
+    DSSignKeyRes.KeyType = "DS"
+    DSSignKeyRes.PrivKey = *RSAPrivKey
 
     var DSVerifyKeyRes DSVerifyKey
-    DSVerifyKeyRes.keyType = "DS"
-    DSVerifyKeyRes.pubKey = RSAPubKey
+    DSVerifyKeyRes.KeyType = "DS"
+    DSVerifyKeyRes.PubKey = RSAPubKey
 
     return DSSignKeyRes, DSVerifyKeyRes, err
 }
 
 // Signs a byte stream via SHA256 and PKCS1v15
 func DSSign(sk DSSignKey, msg []byte) ([]byte, error) {
-    RSAPrivKey := &sk.privKey
+    RSAPrivKey := &sk.PrivKey
 
-    if sk.keyType != "DS" {
+    if sk.KeyType != "DS" {
         return nil, errors.New("Using a non-DS key for DS.")
     }
 
@@ -246,9 +251,9 @@ func DSSign(sk DSSignKey, msg []byte) ([]byte, error) {
 
 // Verifies a signature signed with SHA256 and PKCS1v15
 func DSVerify(vk DSVerifyKey, msg []byte, sig []byte) error {
-    RSAPubKey := &vk.pubKey
+    RSAPubKey := &vk.PubKey
 
-    if vk.keyType != "DS" {
+    if vk.KeyType != "DS" {
         return errors.New("Using a non-DS key for DS.")
     }
 
@@ -268,12 +273,16 @@ func DSVerify(vk DSVerifyKey, msg []byte, sig []byte) error {
 */
 
 // Evaluate the HMAC using sha512
-func HMACEval(key []byte, msg []byte) []byte {
+func HMACEval(key []byte, msg []byte) ([]byte, error) {
+    if len(key) != 16 {
+       panic(errors.New("The input as key for HMAC should be a 16-byte key."))
+    }
+
     mac := hmac.New(sha512.New, key)
     mac.Write(msg)
     res := mac.Sum(nil)
 
-    return res
+    return res, nil
 }
 
 // Equals comparison for hashes/MACs

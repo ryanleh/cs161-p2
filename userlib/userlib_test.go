@@ -101,44 +101,34 @@ func TestDatastore(t *testing.T) {
 }
 
 func TestKeystore(t *testing.T) {
-    UUID1 := UUIDFromBytes(t, key1)
-    UUID2 := UUIDFromBytes(t, key2)
-    UUID3 := UUIDFromBytes(t, key3)
-
     RSAPubKey, _, err1 := PKEKeyGen()
     _, DSVerifyKey, err2 := DSKeyGen()
-    pubKey := RSAPubKey.pubKey
-    verKey := DSVerifyKey.pubKey
 
     if err1 != nil || err2 != nil {
         t.Error("PKEKeyGen() failed")
     }
 
-    if pubKey.N.Cmp(verKey.N) == 0 && pubKey.E == verKey.E {
-        t.Error("PKEKeyGen() and DSKeyGen() returned same key")
-    }
+    KeystoreSet("user1", RSAPubKey)
+    KeystoreSet("user2", DSVerifyKey)
 
-    KeystoreSet(UUID1, pubKey)
-    KeystoreSet(UUID2, verKey)
-
-    _, valid := KeystoreGet(UUID3)
+    _, valid := KeystoreGet("user3")
     if valid {
         t.Error("Keystore fetched UUID3 when it wasn't supposed to")
     }
 
-    data, valid := KeystoreGet(UUID1)
-    if !valid || data.N.Cmp(pubKey.N) != 0 || data.E != pubKey.E {
+    data, valid := KeystoreGet("user1")
+    if !valid {
         t.Error("Key stored at UUID1 doesn't match")
     }
 
-    data, valid = KeystoreGet(UUID2)
-    if !valid || data.N.Cmp(verKey.N) != 0 || data.E != verKey.E {
+    data, valid = KeystoreGet("user2")
+    if !valid {
         t.Error("Key stored at UUID2 doesn't match")
     }
 
     KeystoreClear()
 
-    _, valid = KeystoreGet(UUID1)
+    _, valid = KeystoreGet("user1")
     if valid {
         t.Error("KeystoreGet succeeded even after KeystoreClear")
     }
@@ -157,7 +147,7 @@ func TestRSA(t *testing.T) {
         t.Error("PKEKeyGen() failed", err)
     }
 
-    t.Log(RSAPubKey.pubKey)
+    t.Log(RSAPubKey)
     ciphertext, err := PKEEnc(RSAPubKey, []byte("Squeamish Ossifrage"))
     if err != nil {
         t.Error("PKEEnc() error", err)
@@ -196,18 +186,18 @@ func TestHMAC(t *testing.T) {
     msga := []byte("foo")
     msgb := []byte("bar")
 
-    hmac1a := HMACEval(key1, msga)
-    hmac1b := HMACEval(key1, msgb)
+    hmac1a, _ := HMACEval(key1, msga)
+    hmac1b, _ := HMACEval(key1, msgb)
     if HMACEqual(hmac1a, hmac1b) {
         t.Error("HMACs are equal for different data")
     }
 
-    hmac2a := HMACEval(key2, msga)
+    hmac2a, _ := HMACEval(key2, msga)
     if HMACEqual(hmac1a, hmac2a) {
         t.Error("HMACs are equal for different key")
     }
 
-    hmac1a2 := HMACEval(key1, msga)
+    hmac1a2, _ := HMACEval(key1, msga)
     if !HMACEqual(hmac1a, hmac1a2) {
         t.Error("HMACs are not equal when they should be")
     }
