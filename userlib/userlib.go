@@ -35,7 +35,7 @@ var HashSize = sha512.Size
 
 
 // Debug print true/false
-var DebugPrint = false
+var DebugPrint = true
 
 // DebugMsg. Helper function: Does formatted printing to stderr if
 // the DebugPrint global is set.  All our testing ignores stderr,
