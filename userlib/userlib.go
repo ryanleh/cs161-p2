@@ -118,7 +118,7 @@ func KeystoreClear() {
 // Sets the value in the keystore
 func KeystoreSet(key string, value PublicKeyType) error {
     _, present := keystore[key]
-    if present != nil {
+    if present != false {
        return errors.New("That entry in the Keystore has been taken.")
     }
 
