@@ -35,11 +35,16 @@ var HashSize = sha512.Size
 
 
 // Debug print true/false
-var DebugPrint = true
+var DebugPrint = false
 
 // DebugMsg. Helper function: Does formatted printing to stderr if
 // the DebugPrint global is set.  All our testing ignores stderr,
 // so feel free to use this for any sort of testing you want.
+
+func SetDebugStatus(status bool){
+	DebugPrint = status
+}
+
 func DebugMsg(format string, args ...interface{}) {
     if DebugPrint {
         msg := fmt.Sprintf("%v ", time.Now().Format("15:04:05.00000"))
