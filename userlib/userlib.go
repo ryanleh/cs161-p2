@@ -249,7 +249,7 @@ func DSSign(sk DSSignKey, msg []byte) ([]byte, error) {
 func DSVerify(vk DSVerifyKey, msg []byte, sig []byte) error {
     RSAPubKey := &vk.PubKey
 
-    if vk.keyType != "DS" {
+    if vk.KeyType != "DS" {
         return errors.New("Using a non-DS key for DS.")
     }
 
