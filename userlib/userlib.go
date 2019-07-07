@@ -325,11 +325,11 @@ func SymEnc(key []byte, iv []byte, plaintext []byte) []byte {
         panic(err)
     }
 
-    stream := cipher.NewCTR(block, iv)
+    mode := cipher.NewCBCEncrypter(block, iv)
     ciphertext := make([]byte, AESBlockSize + len(plaintext))
     copy(ciphertext[:AESBlockSize], iv)
 
-    stream.XORKeyStream(ciphertext[AESBlockSize:], plaintext)
+    mode.CryptBlocks(ciphertext[AESBlockSize:], plaintext)
 
     return ciphertext
 }
@@ -343,9 +343,9 @@ func SymDec(key []byte, ciphertext []byte) []byte {
 
     iv := ciphertext[:AESBlockSize]
     plaintext := make([]byte, len(ciphertext) - AESBlockSize)
-    stream := cipher.NewCTR(block, iv)
+    mode := cipher.NewCBCDecrypter(block, iv)
 
-    stream.XORKeyStream(plaintext, ciphertext[aes.BlockSize:])
+    mode.CryptBlocks(plaintext, ciphertext[AESBlockSize:])
 
     return plaintext
 }
